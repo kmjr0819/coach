@@ -1,0 +1,9 @@
+{
+  "name": "smartcare-live-call-coach",
+  "version": "5.0.0",
+  "description": "SmartCare Live Call Coach - Medicare Advantage AI Sales Tool",
+  "private": true,
+  "engines": {
+    "node": "24.x"
+  }
+}

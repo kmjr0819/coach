@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SmartCare Live Call Coach</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#090d14;--bg2:#111520;--bg3:#171c2a;--bg4:#1d2235;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);--border3:rgba(255,255,255,0.2);
+  --text:#e8eaf0;--text2:#8a90a8;--text3:#404868;
+  --accent:#1a6fd4;--accent2:#2486f5;
+  --green:#1a9e75;--red:#b83030;--amber:#c07a0a;--purple:#7048b8;--teal:#0d8a82;
+  --risk-critical:#ff3b3b;--risk-high:#ff8c00;--risk-medium:#f0c030;--risk-low:#1a9e75;
+}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh;overflow:hidden;font-size:12px;}
+
+.hdr{background:linear-gradient(135deg,#060f22,#0b2050);padding:9px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.09);flex-shrink:0;}
+.hdr-logo{font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.4px;}
+.hdr-logo span{color:#5DCAA5;}
+.hdr-badge{font-size:9px;font-weight:700;letter-spacing:1px;padding:2px 7px;border-radius:20px;background:rgba(93,202,165,0.1);color:#5DCAA5;border:1px solid rgba(93,202,165,0.22);}
+.hdr-r{margin-left:auto;display:flex;align-items:center;gap:12px;}
+.live-pill{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--text2);font-family:'JetBrains Mono',monospace;letter-spacing:1px;}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--text3);}
+.dot.on{background:#5DCAA5;animation:lp 1.2s infinite;}
+@keyframes lp{0%,100%{box-shadow:0 0 3px #5DCAA5;}50%{box-shadow:0 0 12px #5DCAA5;}}
+.tmr{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);}
+
+.ctrl{background:var(--bg2);padding:7px 14px;display:flex;gap:6px;align-items:center;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+.ctrl input{font-family:'Outfit',sans-serif;font-size:12px;padding:6px 10px;border-radius:5px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);outline:none;flex:1;min-width:120px;}
+.ctrl input::placeholder{color:var(--text3);}
+.btn{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;padding:6px 13px;border-radius:5px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.btn:hover{background:rgba(255,255,255,0.07);}
+.btn:active{transform:scale(0.97);}
+.btn:disabled{opacity:0.3;cursor:not-allowed;transform:none;}
+.btn-go{background:var(--accent);border-color:var(--accent2);color:#fff;}
+.btn-go:hover{background:var(--accent2);}
+.btn-stop{background:var(--red);border-color:#d44;color:#fff;}
+.btn-stop:hover{background:#d44;}
+.btn-sum{background:var(--purple);border-color:#8b5cf6;color:#fff;}
+.btn-sum:hover{background:#8b5cf6;}
+.btn-dna{background:var(--teal);border-color:#1aa09a;color:#fff;}
+.btn-dna:hover{background:#1aa09a;}
+
+.ctx{background:var(--bg2);padding:4px 14px;display:flex;gap:4px;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0;}
+.ctx-lbl{font-size:9px;color:var(--text3);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;}
+.badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;user-select:none;transition:all 0.15s;}
+.badge.on{background:rgba(26,111,212,0.16);border-color:rgba(36,134,245,0.5);color:#7ab8f5;}
+
+.risk-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:5px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;min-height:32px;}
+.risk-bar.hidden{display:none;}
+.risk-score-wrap{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.risk-score-label{font-size:9px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--text3);}
+.risk-score-num{font-size:15px;font-weight:800;font-family:'JetBrains Mono',monospace;transition:color 0.3s;}
+.risk-meter{flex:0 0 80px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.risk-meter-fill{height:100%;border-radius:3px;transition:width 0.5s ease,background 0.5s ease;width:0%;}
+.risk-flags{display:flex;gap:4px;flex-wrap:wrap;flex:1;}
+.risk-flag{font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:0.3px;animation:rfin 0.3s ease;}
+@keyframes rfin{from{opacity:0;transform:scale(0.8);}to{opacity:1;transform:scale(1);}}
+.rf-critical{background:rgba(255,59,59,0.18);color:#ff7b7b;border:1px solid rgba(255,59,59,0.4);}
+.rf-high{background:rgba(255,140,0,0.18);color:#ffaa44;border:1px solid rgba(255,140,0,0.4);}
+.rf-medium{background:rgba(240,192,48,0.18);color:#f0d060;border:1px solid rgba(240,192,48,0.4);}
+.risk-dismiss{font-size:10px;color:var(--text3);cursor:pointer;margin-left:auto;flex-shrink:0;}
+.risk-dismiss:hover{color:var(--text2);}
+
+.main{display:grid;grid-template-columns:185px 1fr 220px 205px;flex:1;min-height:0;overflow:hidden;}
+.col{display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;}
+.col:last-child{border-right:none;}
+.col-pad{padding:8px 10px;gap:6px;display:flex;flex-direction:column;overflow:hidden;flex:1;}
+.plbl{font-size:8px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);flex-shrink:0;}
+
+.tbox{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.75;color:var(--text2);overflow-y:auto;word-break:break-word;}
+.fin{color:var(--text);}.itr{color:var(--text3);font-style:italic;}
+
+.tabs{display:flex;gap:2px;flex-shrink:0;background:var(--bg3);border-radius:5px;padding:2px;}
+.tab{flex:1;text-align:center;font-size:10px;font-weight:700;padding:4px 3px;border-radius:4px;cursor:pointer;color:var(--text2);transition:all 0.15s;user-select:none;white-space:nowrap;}
+.tab.active{background:var(--accent);color:#fff;}
+.tab-panel{display:none;flex:1;flex-direction:column;gap:6px;overflow:hidden;min-height:0;}
+.tab-panel.show{display:flex;}
+
+.feed{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;min-height:0;}
+.empty-st{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);gap:5px;text-align:center;padding:14px;}
+.card{border-radius:6px;padding:8px 10px;border:1px solid transparent;animation:cin 0.3s ease;flex-shrink:0;}
+@keyframes cin{from{opacity:0;transform:translateY(-5px);}to{opacity:1;transform:translateY(0);}}
+.c-rb{background:rgba(26,111,212,0.09);border-color:rgba(26,111,212,0.28);}
+.c-cm{background:rgba(184,48,48,0.09);border-color:rgba(184,48,48,0.28);}
+.c-tp{background:rgba(26,158,117,0.09);border-color:rgba(26,158,117,0.28);}
+.c-sg{background:rgba(192,122,10,0.09);border-color:rgba(192,122,10,0.28);}
+.c-th{background:var(--bg2);border-color:var(--border);color:var(--text3);font-size:10px;padding:7px 10px;}
+.c-risk{border-radius:6px;padding:9px 11px;border:1px solid transparent;animation:cin 0.3s ease;flex-shrink:0;}
+.c-risk-critical{background:rgba(255,59,59,0.1);border-color:rgba(255,59,59,0.4);}
+.c-risk-high{background:rgba(255,140,0,0.09);border-color:rgba(255,140,0,0.35);}
+.c-risk-medium{background:rgba(240,192,48,0.08);border-color:rgba(240,192,48,0.3);}
+.ch{display:flex;align-items:center;gap:5px;margin-bottom:3px;}
+.cico{width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0;}
+.ci-rb{background:var(--accent);color:#fff;}.ci-cm{background:var(--red);color:#fff;}.ci-tp{background:var(--green);color:#fff;}.ci-sg{background:var(--amber);color:#fff;}
+.ci-critical{background:var(--risk-critical);color:#fff;}.ci-high{background:var(--risk-high);color:#fff;}.ci-medium{background:var(--risk-medium);color:#000;}
+.ctag{font-size:8px;font-weight:700;letter-spacing:0.7px;text-transform:uppercase;}
+.t-rb{color:#7ab8f5;}.t-cm{color:#e07070;}.t-tp{color:#4dcaa5;}.t-sg{color:#e8a830;}
+.t-critical{color:#ff7b7b;}.t-high{color:#ffaa44;}.t-medium{color:#f0d060;}
+.cbody{font-size:11px;line-height:1.5;color:var(--text);}
+.dots span{animation:bl 1.2s infinite;opacity:0.3;}
+.dots span:nth-child(2){animation-delay:0.2s;}.dots span:nth-child(3){animation-delay:0.4s;}
+@keyframes bl{0%,100%{opacity:0.3;}50%{opacity:1;}}
+.risk-rebuttal{margin-top:6px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:4px;border-left:2px solid rgba(255,255,255,0.15);font-size:11px;line-height:1.5;color:var(--text);font-style:italic;}
+.commission-stake{display:inline-flex;align-items:center;gap:4px;margin-top:5px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:3px;background:rgba(26,158,117,0.15);color:#4dcaa5;border:1px solid rgba(26,158,117,0.3);}
+
+.risk-detail-feed{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:5px;}
+.risk-cat-card{border-radius:6px;padding:7px 9px;border:1px solid var(--border2);background:var(--bg3);flex-shrink:0;}
+.risk-cat-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
+.risk-cat-name{font-size:11px;font-weight:700;color:var(--text);}
+.risk-sev-badge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;}
+.sev-critical{background:rgba(255,59,59,0.2);color:#ff7b7b;}
+.sev-high{background:rgba(255,140,0,0.2);color:#ffaa44;}
+.sev-medium{background:rgba(240,192,48,0.2);color:#f0d060;}
+.risk-cat-phrase{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text3);background:var(--bg4,#1d2235);padding:2px 5px;border-radius:3px;display:inline-block;margin:1px;}
+
+.county-banner{flex-shrink:0;background:rgba(26,111,212,0.08);border:1px solid rgba(26,111,212,0.25);border-radius:6px;padding:7px 9px;}
+.county-name-txt{font-size:13px;font-weight:700;color:var(--text);}
+.county-sub-txt{font-size:10px;color:var(--text2);margin-top:1px;}
+.plan-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:5px;}
+.plan-row{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:7px 9px;}
+.plan-row.best{border-color:rgba(26,158,117,0.5);background:rgba(26,158,117,0.06);}
+.plan-row.snp-plan{border-color:rgba(112,72,184,0.5);background:rgba(112,72,184,0.06);}
+.plan-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
+.plan-carrier-tag{font-size:8px;font-weight:700;letter-spacing:0.5px;padding:1px 5px;border-radius:3px;text-transform:uppercase;}
+.tag-uhc{background:rgba(0,100,200,0.2);color:#7ab8f5;}
+.tag-aetna{background:rgba(184,0,0,0.2);color:#e07070;}
+.tag-humana{background:rgba(0,150,100,0.2);color:#5DCAA5;}
+.tag-elevance{background:rgba(120,60,200,0.2);color:#b48ef5;}
+.plan-comm{font-size:11px;font-weight:700;color:var(--green);}
+.plan-name-txt{font-size:11px;font-weight:600;color:var(--text);margin-bottom:3px;}
+.plan-stats{display:flex;gap:7px;flex-wrap:wrap;}
+.stat-chip{font-size:9px;color:var(--text2);}
+.stat-chip span{color:var(--text);font-weight:600;}
+.best-badge{font-size:8px;font-weight:700;color:var(--green);}
+.snp-badge{font-size:8px;font-weight:700;color:#b48ef5;}
+.stars{color:#f0b429;font-size:9px;}
+.leak-panel{flex-shrink:0;border-radius:6px;padding:8px 10px;border:1px solid var(--border2);background:var(--bg3);}
+.leak-panel.active{background:rgba(184,48,48,0.08);border-color:rgba(184,48,48,0.35);}
+.leak-panel.safe{background:rgba(26,158,117,0.08);border-color:rgba(26,158,117,0.3);}
+.leak-hdr{font-size:9px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:4px;display:flex;align-items:center;gap:5px;}
+.leak-alert{font-size:11px;color:var(--text);line-height:1.5;margin-bottom:5px;}
+.leak-delta{display:flex;align-items:baseline;gap:4px;margin-bottom:5px;}
+.leak-amt{font-size:16px;font-weight:800;font-family:'JetBrains Mono',monospace;}
+.leak-amt.bad{color:var(--red);}.leak-amt.good{color:var(--green);}
+.leak-sub{font-size:10px;color:var(--text2);}
+.leak-row{display:flex;justify-content:space-between;font-size:10px;padding:3px 0;border-bottom:1px solid var(--border);}
+.leak-row:last-child{border-bottom:none;}
+
+.profile-grid{display:flex;flex-direction:column;gap:3px;flex-shrink:0;}
+.prow{display:flex;align-items:flex-start;gap:5px;padding:4px 6px;background:var(--bg3);border-radius:5px;}
+.pl{font-size:8px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;min-width:52px;padding-top:1px;flex-shrink:0;}
+.pv{font-size:10px;color:var(--text);font-family:'JetBrains Mono',monospace;flex:1;word-break:break-word;}
+.pv.empty{color:var(--text3);font-family:'Outfit',sans-serif;font-style:italic;}
+.divider{height:1px;background:var(--border);margin:2px 0;flex-shrink:0;}
+.meter-lbl{font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:3px;}
+.meter-bar{height:7px;background:var(--bg3);border-radius:4px;overflow:hidden;border:1px solid var(--border2);}
+.meter-fill{height:100%;border-radius:4px;transition:width 0.6s ease,background 0.6s ease;background:var(--red);}
+.meter-row{display:flex;justify-content:space-between;margin-top:2px;}
+.meter-st{font-size:9px;color:var(--text2);}
+.meter-pct{font-size:11px;font-weight:700;color:var(--text);}
+.score-box{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:7px 9px;flex-shrink:0;}
+.score-big{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text);}
+.score-sub{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;}
+.score-items{margin-top:4px;display:flex;flex-direction:column;gap:2px;}
+.sc-row{display:flex;justify-content:space-between;font-size:9px;color:var(--text2);}
+.sc-row span:last-child{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--text);}
+.obj-list{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
+.obj-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border);}
+.obj-row:last-child{border-bottom:none;}
+.obj-nm{font-size:10px;color:var(--text2);}
+.obj-ct{font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);}
+.chklist{display:flex;flex-direction:column;gap:3px;flex-shrink:0;}
+.chk{display:flex;align-items:center;gap:5px;padding:4px 6px;background:var(--bg3);border-radius:5px;}
+.chk-b{width:13px;height:13px;border-radius:3px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:8px;flex-shrink:0;transition:all 0.2s;}
+.chk-b.done{background:var(--green);border-color:var(--green);color:#fff;}
+.chk-t{font-size:10px;color:var(--text2);}
+.chk-t.done{color:var(--text3);text-decoration:line-through;}
+
+.sbar{background:var(--bg2);border-top:1px solid var(--border);padding:5px 14px;font-size:10px;color:var(--text2);flex-shrink:0;}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:100;align-items:center;justify-content:center;}
+.overlay.show{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;width:700px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;}
+.modal-hdr{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.modal-title{font-size:13px;font-weight:700;}
+.modal-x{background:none;border:none;color:var(--text2);font-size:16px;cursor:pointer;}
+.modal-body{padding:14px 16px;overflow-y:auto;flex:1;font-size:12px;line-height:1.65;color:var(--text2);}
+.modal-body h3{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin:12px 0 5px;padding-bottom:3px;border-bottom:1px solid var(--border);}
+.modal-body h3:first-child{margin-top:0;}
+.modal-body p{margin-bottom:6px;color:var(--text);}
+.crm-box{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:var(--text);}
+.modal-foot{padding:8px 16px;border-top:1px solid var(--border);display:flex;gap:7px;justify-content:flex-end;flex-shrink:0;}
+.dna-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.dna-card{background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:10px 12px;}
+.dna-num{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text);}
+.dna-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-top:2px;}
+.dna-sub{font-size:10px;color:var(--text2);margin-top:3px;}
+.obj-b-row{display:flex;align-items:center;gap:7px;margin-bottom:4px;}
+.obj-b-lbl{font-size:10px;color:var(--text2);min-width:110px;}
+.obj-b-bar{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.obj-b-fill{height:100%;border-radius:3px;background:var(--accent);}
+.obj-b-ct{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text);min-width:20px;text-align:right;}
+.hour-grid{display:grid;grid-template-columns:repeat(13,1fr);gap:2px;margin-top:4px;}
+.hour-cell{height:22px;border-radius:2px;background:var(--bg3);display:flex;align-items:flex-end;padding:1px;}
+.hour-fill{width:100%;border-radius:2px;background:var(--accent);}
+.hour-lbl{font-size:7px;color:var(--text3);text-align:center;margin-top:2px;}
+
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-logo">Smart<span>Care</span> Live Call Coach</div>
+  <div class="hdr-badge">MA · v5</div>
+  <div class="hdr-r">
+    <div class="live-pill"><div class="dot" id="dot"></div><span id="lbl">IDLE</span></div>
+    <div class="tmr" id="tmr">00:00</div>
+  </div>
+</div>
+
+<div class="ctrl">
+  <input type="text" id="cname" placeholder="Caller name (optional)"/>
+  <button class="btn btn-go" id="sbtn" onclick="startCall()">🎙 Start Listening</button>
+  <button class="btn btn-stop" id="xbtn" onclick="endCall()" disabled>■ End Call</button>
+  <button class="btn btn-sum" id="sumbtn" onclick="showSummary()" disabled>📋 Summary</button>
+  <button class="btn btn-dna" onclick="showDNA()">🧬 DNA</button>
+  <button class="btn" onclick="resetAll()">✕ Clear</button>
+</div>
+
+<div class="ctx">
+  <span class="ctx-lbl">Focus:</span>
+  <span class="badge on" onclick="tc(this,'objections')">Objections</span>
+  <span class="badge on" onclick="tc(this,'benefits')">Benefits</span>
+  <span class="badge on" onclick="tc(this,'compliance')">Compliance</span>
+  <span class="badge on" onclick="tc(this,'closing')">Closing</span>
+  <span class="badge on" onclick="tc(this,'retention')">Retention</span>
+  <span class="badge on" onclick="tc(this,'snp')">D-SNP/SNP</span>
+  <span class="badge" onclick="tc(this,'sep')">SEP</span>
+  <span class="badge" onclick="tc(this,'otc')">OTC</span>
+  <span class="badge" onclick="tc(this,'partd')">Part D</span>
+</div>
+
+<div class="risk-bar hidden" id="risk-bar">
+  <div class="risk-score-wrap">
+    <span class="risk-score-label">Risk</span>
+    <span class="risk-score-num" id="risk-score-num">0</span>
+    <div class="risk-meter"><div class="risk-meter-fill" id="risk-meter-fill"></div></div>
+  </div>
+  <div class="risk-flags" id="risk-flags"></div>
+  <span class="risk-dismiss" onclick="document.getElementById('risk-bar').classList.add('hidden')">✕</span>
+</div>
+
+<div class="main">
+  <div class="col">
+    <div class="col-pad">
+      <div class="plbl">Live Transcript</div>
+      <div class="tbox" id="tbox"><span class="itr">Transcript appears here once listening starts...</span></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="col-pad">
+      <div class="tabs" id="mid-tabs">
+        <div class="tab active" onclick="switchTab('coach',this)">🎯 Coach</div>
+        <div class="tab" onclick="switchTab('risk',this)">🚨 Risk</div>
+        <div class="tab" onclick="switchTab('county',this)">🗺 County</div>
+      </div>
+
+      <div class="tab-panel show" id="tab-coach">
+        <div class="feed" id="feed">
+          <div class="empty-st" id="empty-coach">
+            <div style="font-size:24px;">🎯</div>
+            <div style="font-weight:600;color:var(--text2);">Coaching cards appear here</div>
+            <div style="font-size:10px;margin-top:2px;">Start listening to activate</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-risk">
+        <div style="flex-shrink:0;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;">
+          <div style="font-size:10px;color:var(--text3);">Risk signals detected this call:</div>
+          <div id="risk-summary-flags" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;min-height:14px;"></div>
+        </div>
+        <div class="risk-detail-feed" id="risk-detail-feed">
+          <div style="font-size:10px;color:var(--text3);text-align:center;padding:16px;">No risk signals detected yet.</div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-county">
+        <div id="county-banner" style="display:none;" class="county-banner">
+          <div class="county-name-txt" id="county-name-txt">—</div>
+          <div class="county-sub-txt" id="county-sub-txt"></div>
+        </div>
+        <div class="leak-panel" id="leak-panel">
+          <div class="leak-hdr"><span>💰</span><span id="leak-title" style="color:var(--text3);">Revenue Leakage Monitor</span></div>
+          <div id="leak-body" style="font-size:10px;color:var(--text3);">Activates when county is detected on call.</div>
+        </div>
+        <div class="plbl">Available Plans — <span id="plan-count-lbl">—</span></div>
+        <div class="plan-list" id="plan-list">
+          <div style="font-size:10px;color:var(--text3);padding:10px;text-align:center;">County detected from transcript populates plans here.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="col-pad" style="overflow-y:auto;">
+      <div class="plbl">Caller Profile</div>
+      <div class="profile-grid">
+        <div class="prow"><span class="pl">Name</span><span class="pv empty" id="p-name">—</span></div>
+        <div class="prow"><span class="pl">DOB/Age</span><span class="pv empty" id="p-dob">—</span></div>
+        <div class="prow"><span class="pl">County</span><span class="pv empty" id="p-county">—</span></div>
+        <div class="prow"><span class="pl">Zip</span><span class="pv empty" id="p-zip">—</span></div>
+        <div class="prow"><span class="pl">Curr Plan</span><span class="pv empty" id="p-plan">—</span></div>
+        <div class="prow"><span class="pl">Medicaid</span><span class="pv empty" id="p-medicaid">—</span></div>
+        <div class="prow"><span class="pl">SEP</span><span class="pv empty" id="p-sep">—</span></div>
+        <div class="prow"><span class="pl">Concerns</span><span class="pv empty" id="p-concerns">—</span></div>
+      </div>
+      <div class="divider"></div>
+      <div class="meter-lbl">Enrollment Readiness</div>
+      <div class="meter-bar"><div class="meter-fill" id="mfill" style="width:0%"></div></div>
+      <div class="meter-row"><div class="meter-st" id="mst">Waiting...</div><div class="meter-pct" id="mpct">0%</div></div>
+      <div class="divider"></div>
+      <div class="score-box">
+        <div style="display:flex;align-items:baseline;gap:5px;">
+          <div class="score-big" id="score-big">—</div>
+          <div class="score-sub">/ 100</div>
+        </div>
+        <div class="score-items">
+          <div class="sc-row"><span>Rapport</span><span id="sc-r">—</span></div>
+          <div class="sc-row"><span>Needs discovery</span><span id="sc-n">—</span></div>
+          <div class="sc-row"><span>Benefits</span><span id="sc-b">—</span></div>
+          <div class="sc-row"><span>Objections</span><span id="sc-o">—</span></div>
+          <div class="sc-row"><span>Compliance</span><span id="sc-c">—</span></div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="plbl" style="margin-bottom:4px;">Objections Heard</div>
+      <div class="obj-list" id="obj-list"><div style="font-size:10px;color:var(--text3);font-style:italic;">None yet</div></div>
+      <div class="divider"></div>
+      <div class="plbl" style="margin-bottom:4px;">Compliance</div>
+      <div class="chklist">
+        <div class="chk"><div class="chk-b" id="cb-soa">?</div><div class="chk-t" id="ct-soa">SOA confirmed</div></div>
+        <div class="chk"><div class="chk-b" id="cb-rec">?</div><div class="chk-t" id="ct-rec">Recording consent</div></div>
+        <div class="chk"><div class="chk-b" id="cb-tpmo">?</div><div class="chk-t" id="ct-tpmo">TPMO disclaimer</div></div>
+        <div class="chk"><div class="chk-b" id="cb-scope">?</div><div class="chk-t" id="ct-scope">Within SOA scope</div></div>
+        <div class="chk"><div class="chk-b" id="cb-enroll">?</div><div class="chk-t" id="ct-enroll">Enrollment period ok</div></div>
+        <div class="chk"><div class="chk-b" id="cb-pcp">?</div><div class="chk-t" id="ct-pcp">PCP check done</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sbar" id="sbar">Click "Start Listening" and allow microphone access when Chrome asks</div>
+
+<div class="overlay" id="sum-overlay">
+  <div class="modal">
+    <div class="modal-hdr"><div class="modal-title">📋 Post-Call Summary & CRM Note</div><button class="modal-x" onclick="closeModal('sum-overlay')">✕</button></div>
+    <div class="modal-body" id="sum-body"><div style="padding:30px;text-align:center;color:var(--text3);">Generating<span class="dots"><span>.</span><span>.</span><span>.</span></span></div></div>
+    <div class="modal-foot"><button class="btn" onclick="copyCRM()">📋 Copy CRM Note</button><button class="btn btn-go" onclick="closeModal('sum-overlay')">Close</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="dna-overlay">
+  <div class="modal">
+    <div class="modal-hdr"><div class="modal-title">🧬 Agent Performance DNA — Ken Miller</div><button class="modal-x" onclick="closeModal('dna-overlay')">✕</button></div>
+    <div class="modal-body" id="dna-body"></div>
+    <div class="modal-foot"><button class="btn" onclick="clearDNA()">Reset DNA</button><button class="btn btn-go" onclick="closeModal('dna-overlay')">Close</button></div>
+  </div>
+</div>
+
+<script>
+// API endpoint — calls our serverless proxy, no key in the browser
+var API_ENDPOINT = '/api/coach';
+
+var RISK_SIGNALS={competitor_influence:{label:"Competitor Influence",severity:"HIGH",phrases:["my friend told me about","my neighbor switched","my neighbor has","my neighbor said","someone told me about a plan","i got a mailer","i got a letter from","i got a flyer","i saw a commercial","i saw an ad","i heard an ad","i called that number on tv","i got a postcard","i received something in the mail","humana sent me","aetna sent me","united sent me","uhc sent me","cigna sent me","wellcare sent me","is there anything better","are there better plans","what else is out there","shopping around","looking at my options","considering switching","thinking about changing","thinking about switching","want to switch","want to change my plan","another agent called me","another agent told me","a broker called"]},network_access:{label:"Network/Provider Risk",severity:"HIGH",phrases:["my doctor doesn't take","my doctor doesn't accept","my doctor is not in network","my doctor left the network","my doctor dropped","my specialist isn't covered","i can't see my doctor","i couldn't get an appointment","they said my doctor isn't in the plan","i had to pay out of pocket to see","my hospital isn't covered","that hospital isn't in network","i have to change doctors","i don't want to change doctors","i love my doctor","i've had my doctor for years","my cardiologist","my oncologist","my neurologist","going out of network","my pharmacy isn't covered","my pharmacy doesn't take this plan"]},drug_coverage:{label:"Drug Coverage Risk",severity:"HIGH",phrases:["my medication isn't covered","my drug isn't covered","my prescription isn't covered","they won't cover my","prior authorization denied","they denied my medication","step therapy","my copay went up","my drug costs more now","i paid full price for my medication","my insulin","my eliquis","my xarelto","my humira","my ozempic","my jardiance","i can't afford my prescriptions","the formulary changed","they took my drug off the formulary","my drug is not on the list","tier 4","tier 5","specialty tier","the donut hole","i hit the donut hole","i'm in the coverage gap","i had to stop taking","i couldn't afford to refill"]},non_effectuation:{label:"Non-Effectuation Risk",severity:"CRITICAL",phrases:["i haven't paid yet","i didn't pay the premium","i forgot to pay","i missed the payment","do i need to pay something","how do i pay","when do i need to pay","i didn't get a bill","i never got a card","i never received my card","i didn't get my insurance card","i signed up but never heard back","i enrolled but nothing happened","i'm not sure if it went through","did my enrollment go through","i applied but","i think i signed up","i don't know if i'm enrolled","am i still on the plan","my bank declined","my check bounced","the payment didn't go through","i don't have a checking account","i can't afford the premium","the premium went up","i didn't know there was a premium","i thought it was free","why is there a charge","i want to cancel","i want to disenroll","i changed my mind","i don't want it anymore","this isn't what i signed up for","i was misled","i want to go back to original medicare","i want to go back to my old plan"]},financial_hardship:{label:"Financial Hardship",severity:"HIGH",phrases:["i can't afford","too expensive","costs too much","the premium is too high","i'm on a fixed income","i live on social security","social security only","i don't have much money","money is tight","i'm struggling financially","i had to choose between","i can't pay my bills","i lost my job","my husband passed away","my wife passed away","i'm a widow","i'm widowed","recently widowed","my income changed","my income went down","i'm not working anymore","i retired recently","just retired","newly retired","i need extra help","do i qualify for help","extra help program","lis","low income subsidy","i heard there's help with premiums","i applied for medicaid","i can't afford my copays","the copays are killing me"]},family_influence:{label:"Family Influence",severity:"MEDIUM",phrases:["my son said","my daughter said","my daughter thinks","my son thinks","my child told me","my kids think","my family thinks","my husband doesn't want","my wife doesn't want","my spouse said","my daughter is going to call","my son is going to handle","let me ask my family","i need to talk to my family","i need to check with my daughter","i need to check with my son","my family handles my insurance","they told me not to","they said i should wait","they said i should call someone else","i need to talk to my power of attorney","my poa","my guardian","i have a caretaker","my caregiver handles"]},health_event:{label:"New Health Event",severity:"HIGH",phrases:["i was just diagnosed","i just found out i have","i was recently diagnosed","new diagnosis","i just had surgery","i'm recovering from surgery","i'm in the hospital","i was just in the hospital","i just got out of the hospital","i had a heart attack","i had a stroke","i had a fall","i broke my hip","i'm in rehab","i'm in skilled nursing","i'm going to need surgery","i was just told i have cancer","i'm starting chemo","i'm starting dialysis","i need dialysis","i need a transplant","i just started a new medication","my condition got worse","i need home health","i need a home health aide","i might need a nursing home","i might need assisted living"]},cognitive_concern:{label:"Cognitive Concern",severity:"CRITICAL",phrases:["i'm confused","i don't understand","i can't follow","you're going too fast","can you slow down","i forget things","my memory isn't good","i have memory problems","i have dementia","i have alzheimer's","i get confused easily","i have trouble understanding","i need someone to explain","is there someone who can help me","can you call my daughter","i want my son on the phone","i need my family here","i'm not sure what i'm agreeing to","what am i signing up for","i don't know what this means","this is too complicated","i have a brain injury","i had a stroke and","i need things explained simply","i'm hard of hearing","i can barely hear"]},agent_interference:{label:"Agent Interference",severity:"HIGH",phrases:["another agent already","someone already called me about this","i already talked to someone","i already have an agent","my agent is","my broker is","i work with someone","they already enrolled me","someone already signed me up","i signed up with someone else","i enrolled through someone else","someone enrolled me over the phone","i didn't ask to be enrolled","i didn't know i was being enrolled","someone signed me up without asking","i didn't agree to switch","i don't know how i got on this plan","i don't remember switching","i want to report","i'm going to call medicare","i'm going to call 1-800-medicare","i'm going to file a complaint"]},buyers_remorse:{label:"Buyer's Remorse",severity:"HIGH",phrases:["i changed my mind","i'm not sure anymore","i'm having second thoughts","i don't think i want to","i want to think about it more","i'm not ready","can i cancel","how do i cancel","what if i want to go back","can i undo this","i didn't realize","this isn't what i expected","this is different from what you told me","i thought you said","i feel pressured","i feel rushed","i need more time","let me sleep on it","let me think about it","call me back tomorrow","i'm not comfortable","my gut is telling me","something doesn't feel right","i want to read the materials first","send me something in writing"]},cob_risk:{label:"COB / Other Coverage",severity:"HIGH",phrases:["i have other insurance","i have coverage through my job","i'm still working","my employer covers me","i have retiree coverage","my pension covers","my union covers","i have va coverage","i'm a veteran","i use the va","tricare","i have tricare","i have coverage through my spouse","my husband has insurance","my wife has insurance","i'm on my spouse's plan","i have medicaid and medicare","i have a supplement","i have medigap","i have a medicare supplement","plan f","plan g","plan n","will this affect my other coverage","i don't want to lose my other coverage","can i keep my other insurance"]},enrollment_period:{label:"Enrollment Period Risk",severity:"HIGH",phrases:["am i allowed to enroll now","is it too late to enroll","can i still sign up","i thought enrollment was closed","i missed the deadline","i missed open enrollment","when is open enrollment","i thought i had to wait","can i change my plan now","i just turned 65","i'm turning 65","i'm about to turn 65","i just got medicare","i just got part b","i just lost my employer coverage","i just retired","i moved recently","i just moved","i just lost medicaid","my medicaid was terminated","i just got medicaid","i was just approved for medicaid","i lost my job","i lost my group coverage","cobra ended","my cobra ran out"]},service_complaint:{label:"Service Complaint",severity:"HIGH",phrases:["i'm not happy with","i'm unhappy with","i've had problems with","they keep denying","everything gets denied","i had a bad experience","they treated me badly","nobody helps me","i can't get anyone on the phone","the hold times are terrible","they lost my paperwork","they never called me back","i filed a grievance","i filed an appeal","they made a mistake","they billed me wrong","i was overcharged","i got a surprise bill","i didn't get my otc card","my otc card doesn't work","i haven't gotten my benefits","the benefits aren't working","i've been fighting with them","i'm so frustrated","i want to file a complaint"]},life_change:{label:"Life Change",severity:"MEDIUM",phrases:["i'm moving","i just moved","i'm going to move","i'm moving to another state","moving to florida","moving to north carolina","moving to arizona","i'm going to live with my children","moving in with family","going to a nursing home","going to assisted living","i lost my spouse","my husband died","my wife died","recently divorced","just got divorced","i'm getting married","just got married","my income changed","i started working again","i went back to work","i'm going to lose my medicaid","my medicaid is being reviewed","i inherited money","i came into some money","i spend half the year in florida","snowbird"]},marketing_violation:{label:"CMS Marketing Risk",severity:"CRITICAL",phrases:["you called me","i didn't call you","i didn't ask you to call","how did you get my number","i'm on the do not call list","i didn't request information","i didn't fill out anything","i didn't give permission","i didn't opt in","i want to be removed","take me off your list","stop calling me","this feels like a scam","is this legitimate","are you really from medicare","are you from the government","i thought you were from medicare","someone said they were from medicare and called me","i received a call saying my benefits were changing","they said my plan was being discontinued","they scared me into calling"]}};
+
+var SEV_WEIGHT={CRITICAL:40,HIGH:25,MEDIUM:10};
+
+var COUNTY_PLANS={"baltimore city":[{carrier:"UHC/AARP",name:"AARP MedicareComplete Choice Plan 1",type:"HMO",premium:0,moop:4500,otc:100,dental:2500,vision:300,hearing:999,stars:4.5,commission:600,snp:false},{carrier:"UHC/AARP",name:"AARP MedicareComplete HMO-POS",type:"HMO-POS",premium:0,moop:5900,otc:75,dental:1500,vision:200,hearing:500,stars:4.5,commission:540,snp:false},{carrier:"Aetna",name:"Aetna Medicare Eagle Plan (HMO)",type:"HMO",premium:0,moop:4500,otc:150,dental:2000,vision:300,hearing:2000,stars:4.0,commission:580,snp:false},{carrier:"Aetna",name:"Aetna Medicare Assure (HMO D-SNP)",type:"HMO D-SNP",premium:0,moop:3450,otc:200,dental:3000,vision:400,hearing:2000,stars:4.0,commission:640,snp:true},{carrier:"Humana",name:"Humana Gold Plus H5619 (HMO)",type:"HMO",premium:0,moop:5500,otc:120,dental:1000,vision:300,hearing:1000,stars:3.5,commission:480,snp:false},{carrier:"Humana",name:"Humana Honor (HMO D-SNP)",type:"HMO D-SNP",premium:0,moop:3450,otc:250,dental:2500,vision:500,hearing:2000,stars:3.5,commission:620,snp:true},{carrier:"Elevance",name:"Anthem MediBlue Plus (HMO)",type:"HMO",premium:0,moop:4900,otc:100,dental:2000,vision:250,hearing:1500,stars:3.5,commission:500,snp:false},{carrier:"Elevance",name:"Anthem MediBlue Dual Advantage (D-SNP)",type:"HMO D-SNP",premium:0,moop:3450,otc:175,dental:2500,vision:400,hearing:2000,stars:3.5,commission:610,snp:true}],"baltimore county":[{carrier:"UHC/AARP",name:"AARP MedicareComplete Choice Plan 1",type:"HMO",premium:0,moop:4500,otc:100,dental:2500,vision:300,hearing:999,stars:4.5,commission:600,snp:false},{carrier:"UHC/AARP",name:"AARP MedicareComplete Preferred (PPO)",type:"PPO",premium:59,moop:6700,otc:50,dental:1000,vision:200,hearing:500,stars:4.5,commission:480,snp:false},{carrier:"Aetna",name:"Aetna Medicare Eagle Plan (HMO)",type:"HMO",premium:0,moop:4500,otc:150,dental:2000,vision:300,hearing:2000,stars:4.0,commission:580,snp:false},{carrier:"Aetna",name:"Aetna Medicare Assure (HMO D-SNP)",type:"HMO D-SNP",premium:0,moop:3450,otc:200,dental:3000,vision:400,hearing:2000,stars:4.0,commission:640,snp:true},{carrier:"Humana",name:"Humana Gold Plus (HMO)",type:"HMO",premium:0,moop:5500,otc:120,dental:1000,vision:300,hearing:1000,stars:3.5,commission:480,snp:false},{carrier:"Elevance",name:"Anthem MediBlue Plus (HMO)",type:"HMO",premium:0,moop:4900,otc:100,dental:2000,vision:250,hearing:1500,stars:3.5,commission:500,snp:false}],"anne arundel":[{carrier:"UHC/AARP",name:"AARP MedicareComplete Choice Plan 1",type:"HMO",premium:0,moop:4500,otc:100,dental:2500,vision:300,hearing:999,stars:4.5,commission:600,snp:false},{carrier:"Aetna",name:"Aetna Medicare Eagle Plan (HMO)",type:"HMO",premium:0,moop:4500,otc:150,dental:2000,vision:300,hearing:2000,stars:4.0,commission:580,snp:false},{carrier:"Aetna",name:"Aetna Medicare Assure (HMO D-SNP)",type:"HMO D-SNP",premium:0,moop:3450,otc:200,dental:3000,vision:400,hearing:2000,stars:4.0,commission:640,snp:true},{carrier:"Humana",name:"Humana Gold Plus (HMO)",type:"HMO",premium:0,moop:5500,otc:120,dental:1000,vision:300,hearing:1000,stars:3.5,commission:480,snp:false},{carrier:"Elevance",name:"Anthem MediBlue Plus (HMO)",type:"HMO",premium:0,moop:4900,otc:100,dental:2000,vision:250,hearing:1500,stars:3.5,commission:500,snp:false}],"howard":[{carrier:"UHC/AARP",name:"AARP MedicareComplete Choice Plan 1",type:"HMO",premium:0,moop:4500,otc:100,dental:2500,vision:300,hearing:999,stars:4.5,commission:600,snp:false},{carrier:"Aetna",name:"Aetna Medicare Eagle Plan (HMO)",type:"HMO",premium:0,moop:4500,otc:150,dental:2000,vision:300,hearing:2000,stars:4.0,commission:580,snp:false},{carrier:"Humana",name:"Humana Gold Plus (HMO)",type:"HMO",premium:0,moop:5500,otc:120,dental:1000,vision:300,hearing:1000,stars:3.5,commission:480,snp:false},{carrier:"Elevance",name:"Anthem MediBlue Plus (HMO)",type:"HMO",premium:0,moop:4900,otc:100,dental:2000,vision:250,hearing:1500,stars:3.5,commission:500,snp:false}],"montgomery":[{carrier:"UHC/AARP",name:"AARP MedicareComplete Choice Plan 1",type:"HMO",premium:0,moop:4500,otc:100,dental:2500,vision:300,hearing:999,stars:4.5,commission:600,snp:false},{carrier:"Aetna",name:"Aetna Medicare Eagle Plan (HMO)",type:"HMO",premium:0,moop:4500,otc:150,dental:2000,vision:300,hearing:2000,stars:4.0,commission:580,snp:false},{carrier:"Aetna",name:"Aetna Medicare Assure (HMO D-SNP)",type:"HMO D-SNP",premium:0,moop:3450,otc:200,dental:3000,vision:400,hearing:2000,stars:4.0,commission:640,snp:true},{carrier:"Humana",name:"Humana Gold Plus (HMO)",type:"HMO",premium:0,moop:5500,otc:120,dental:1000,vision:300,hearing:1000,stars:3.5,commission:480,snp:false},{carrier:"Elevance",name:"Anthem MediBlue Plus (HMO)",type:"HMO",premium:0,moop:4900,otc:100,dental:2000,vision:250,hearing:1500,stars:3.5,commission:500,snp:false}],"prince george's":[{carrier:"UHC/AARP",name:"AARP MedicareComplete Choice Plan 1",type:"HMO",premium:0,moop:4500,otc:100,dental:2500,vision:300,hearing:999,stars:4.5,commission:600,snp:false},{carrier:"Aetna",name:"Aetna Medicare Eagle Plan (HMO)",type:"HMO",premium:0,moop:4500,otc:150,dental:2000,vision:300,hearing:2000,stars:4.0,commission:580,snp:false},{carrier:"Aetna",name:"Aetna Medicare Assure (HMO D-SNP)",type:"HMO D-SNP",premium:0,moop:3450,otc:200,dental:3000,vision:400,hearing:2000,stars:4.0,commission:640,snp:true},{carrier:"Humana",name:"Humana Gold Plus (HMO)",type:"HMO",premium:0,moop:5500,otc:120,dental:1000,vision:300,hearing:1000,stars:3.5,commission:480,snp:false},{carrier:"Humana",name:"Humana Honor (HMO D-SNP)",type:"HMO D-SNP",premium:0,moop:3450,otc:250,dental:2500,vision:500,hearing:2000,stars:3.5,commission:620,snp:true},{carrier:"Elevance",name:"Anthem MediBlue Plus (HMO)",type:"HMO",premium:0,moop:4900,otc:100,dental:2000,vision:250,hearing:1500,stars:3.5,commission:500,snp:false}],"harford":[{carrier:"UHC/AARP",name:"AARP MedicareComplete Choice Plan 1",type:"HMO",premium:0,moop:4500,otc:100,dental:2500,vision:300,hearing:999,stars:4.5,commission:600,snp:false},{carrier:"Aetna",name:"Aetna Medicare Eagle Plan (HMO)",type:"HMO",premium:0,moop:4500,otc:150,dental:2000,vision:300,hearing:2000,stars:4.0,commission:580,snp:false},{carrier:"Humana",name:"Humana Gold Plus (HMO)",type:"HMO",premium:0,moop:5500,otc:120,dental:1000,vision:300,hearing:1000,stars:3.5,commission:480,snp:false},{carrier:"Elevance",name:"Anthem MediBlue Plus (HMO)",type:"HMO",premium:0,moop:4900,otc:100,dental:2000,vision:250,hearing:1500,stars:3.5,commission:500,snp:false}],"carroll":[{carrier:"UHC/AARP",name:"AARP MedicareComplete Choice Plan 1",type:"HMO",premium:0,moop:4500,otc:100,dental:2500,vision:300,hearing:999,stars:4.5,commission:600,snp:false},{carrier:"Aetna",name:"Aetna Medicare Eagle Plan (HMO)",type:"HMO",premium:0,moop:4500,otc:150,dental:2000,vision:300,hearing:2000,stars:4.0,commission:580,snp:false},{carrier:"Humana",name:"Humana Gold Plus (HMO)",type:"HMO",premium:0,moop:5500,otc:120,dental:1000,vision:300,hearing:1000,stars:3.5,commission:480,snp:false}],"frederick":[{carrier:"UHC/AARP",name:"AARP MedicareComplete Choice Plan 1",type:"HMO",premium:0,moop:4500,otc:100,dental:2500,vision:300,hearing:999,stars:4.5,commission:600,snp:false},{carrier:"Aetna",name:"Aetna Medicare Eagle Plan (HMO)",type:"HMO",premium:0,moop:4500,otc:150,dental:2000,vision:300,hearing:2000,stars:4.0,commission:580,snp:false},{carrier:"Humana",name:"Humana Gold Plus (HMO)",type:"HMO",premium:0,moop:5500,otc:120,dental:1000,vision:300,hearing:1000,stars:3.5,commission:480,snp:false},{carrier:"Elevance",name:"Anthem MediBlue Plus (HMO)",type:"HMO",premium:0,moop:4900,otc:100,dental:2000,vision:250,hearing:1500,stars:3.5,commission:500,snp:false}]};
+var COUNTY_ALIASES={"bmore":"baltimore city","b-more":"baltimore city","baltimore":"baltimore city","balt county":"baltimore county","balt co":"baltimore county","anne arundel county":"anne arundel","aa county":"anne arundel","annapolis":"anne arundel","pg county":"prince george's","prince georges":"prince george's","pg":"prince george's","hoco":"howard","ho co":"howard","moco":"montgomery","mo co":"montgomery","harco":"harford","har co":"harford"};
+
+var rec=null,going=false,fullTx='',buf='',coachTmr=null,clockTmr=null,secs=0,busy=false;
+var contexts=new Set(['objections','benefits','compliance','closing','retention','snp']);
+var objections={},readiness=0,currentCounty='',currentPlans=[];
+var callerProfile={name:'',dob:'',county:'',zip:'',plan:'',medicaid:'',sep:'',concerns:''};
+var callScore={rapport:0,needs:0,benefits:0,objections:0,compliance:0};
+var detectedRisks={},totalRiskScore=0;
+var DNA_KEY='smartcare_dna_v2';
+
+function scanRisks(text){
+  var lower=text.toLowerCase(),newFlags=[];
+  Object.keys(RISK_SIGNALS).forEach(function(cat){
+    var sig=RISK_SIGNALS[cat],matched=[];
+    sig.phrases.forEach(function(p){if(lower.indexOf(p)>-1)matched.push(p);});
+    if(matched.length){
+      if(!detectedRisks[cat]){detectedRisks[cat]={count:0,phrases:[],severity:sig.severity,label:sig.label};newFlags.push(cat);}
+      detectedRisks[cat].count+=matched.length;
+      matched.forEach(function(p){if(detectedRisks[cat].phrases.indexOf(p)===-1)detectedRisks[cat].phrases.push(p);});
+    }
+  });
+  totalRiskScore=0;
+  Object.keys(detectedRisks).forEach(function(cat){totalRiskScore=Math.min(100,totalRiskScore+(SEV_WEIGHT[detectedRisks[cat].severity]||10));});
+  updateRiskBar();updateRiskTab();
+  return newFlags;
+}
+
+function updateRiskBar(){
+  var bar=document.getElementById('risk-bar');
+  if(!Object.keys(detectedRisks).length){bar.classList.add('hidden');return;}
+  bar.classList.remove('hidden');
+  var s=document.getElementById('risk-score-num');
+  s.textContent=totalRiskScore;
+  s.style.color=totalRiskScore>=70?'var(--risk-critical)':totalRiskScore>=45?'var(--risk-high)':totalRiskScore>=20?'var(--risk-medium)':'var(--risk-low)';
+  var fill=document.getElementById('risk-meter-fill');
+  fill.style.width=totalRiskScore+'%';
+  fill.style.background=totalRiskScore>=70?'var(--risk-critical)':totalRiskScore>=45?'var(--risk-high)':totalRiskScore>=20?'var(--risk-medium)':'var(--risk-low)';
+  var flags=document.getElementById('risk-flags');flags.innerHTML='';
+  Object.keys(detectedRisks).forEach(function(cat){
+    var r=detectedRisks[cat];
+    var cls=r.severity==='CRITICAL'?'rf-critical':r.severity==='HIGH'?'rf-high':'rf-medium';
+    var sp=document.createElement('span');sp.className='risk-flag '+cls;sp.textContent=r.label+(r.count>1?' ×'+r.count:'');
+    flags.appendChild(sp);
+  });
+}
+
+function updateRiskTab(){
+  var feed=document.getElementById('risk-detail-feed'),sf=document.getElementById('risk-summary-flags');
+  feed.innerHTML='';sf.innerHTML='';
+  if(!Object.keys(detectedRisks).length){feed.innerHTML='<div style="font-size:10px;color:var(--text3);text-align:center;padding:16px;">No risk signals detected yet.</div>';return;}
+  var sevO={CRITICAL:0,HIGH:1,MEDIUM:2};
+  var cats=Object.keys(detectedRisks).sort(function(a,b){return (sevO[detectedRisks[a].severity]||3)-(sevO[detectedRisks[b].severity]||3);});
+  cats.forEach(function(cat){
+    var r=detectedRisks[cat];
+    var sc=r.severity==='CRITICAL'?'sev-critical':r.severity==='HIGH'?'sev-high':'sev-medium';
+    var fc=r.severity==='CRITICAL'?'rf-critical':r.severity==='HIGH'?'rf-high':'rf-medium';
+    var fl=document.createElement('span');fl.className='risk-flag '+fc;fl.textContent=r.label;sf.appendChild(fl);
+    var card=document.createElement('div');card.className='risk-cat-card';
+    var ph=r.phrases.slice(0,3).map(function(p){return '<span class="risk-cat-phrase">"'+p+'"</span>';}).join(' ');
+    card.innerHTML='<div class="risk-cat-hdr"><span class="risk-cat-name">'+r.label+'</span><span class="risk-sev-badge '+sc+'">'+r.severity+'</span></div><div style="font-size:10px;color:var(--text2);margin-bottom:3px;">Detected: '+ph+'</div>';
+    feed.appendChild(card);
+  });
+}
+
+function setMsg(t){document.getElementById('sbar').textContent=t;}
+function tick(){secs++;var m=String(Math.floor(secs/60)).padStart(2,'0'),s=String(secs%60).padStart(2,'0');document.getElementById('tmr').textContent=m+':'+s;}
+function setLive(on){document.getElementById('dot').className='dot'+(on?' on':'');document.getElementById('lbl').textContent=on?'LIVE':'IDLE';}
+function tc(el,c){el.classList.toggle('on');contexts.has(c)?contexts.delete(c):contexts.add(c);}
+function switchTab(name,el){document.querySelectorAll('#mid-tabs .tab').forEach(function(t){t.classList.remove('active');});document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('show');});el.classList.add('active');document.getElementById('tab-'+name).classList.add('show');}
+function appendTx(text,interim){var b=document.getElementById('tbox');var p=b.querySelector('.itr-live');if(p)p.remove();var ph=b.querySelector('.itr');if(ph&&b.children.length===1)b.innerHTML='';var s=document.createElement('span');s.className=interim?'itr itr-live':'fin';s.textContent=' '+text;b.appendChild(s);b.scrollTop=b.scrollHeight;}
+function showThink(){var f=document.getElementById('feed');if(f.querySelector('.th-c'))return;var d=document.createElement('div');d.className='card c-th th-c';d.innerHTML='Analyzing<span class="dots"><span>.</span><span>.</span><span>.</span></span>';f.insertBefore(d,f.firstChild);}
+function rmThink(){var t=document.getElementById('feed').querySelector('.th-c');if(t)t.remove();}
+
+function addCard(type,tag,body){
+  var f=document.getElementById('feed');var em=document.getElementById('empty-coach');if(em)em.remove();rmThink();
+  var icons={rebuttal:'↩',compliance:'!',tip:'★',suggest:'→'};var cls={rebuttal:'rb',compliance:'cm',tip:'tp',suggest:'sg'};var k=cls[type]||'sg';
+  var d=document.createElement('div');d.className='card c-'+k;
+  d.innerHTML='<div class="ch"><div class="cico ci-'+k+'">'+(icons[type]||'•')+'</div><div class="ctag t-'+k+'">'+tag+'</div></div><div class="cbody">'+body+'</div>';
+  f.insertBefore(d,f.firstChild);
+}
+
+function addRiskCard(severity,label,body,rebuttal,commissionStake){
+  var f=document.getElementById('feed');var em=document.getElementById('empty-coach');if(em)em.remove();rmThink();
+  var sev=(severity||'high').toLowerCase();
+  var d=document.createElement('div');d.className='c-risk c-risk-'+sev;
+  var commHtml=commissionStake?'<div class="commission-stake">💰 $'+commissionStake+'/yr at stake</div>':'';
+  d.innerHTML='<div class="ch"><div class="cico ci-'+sev+'">'+(sev==='medium'?'~':'!')+'</div><div class="ctag t-'+sev+'">'+severity+' RISK — '+label+'</div></div><div class="cbody">'+body+'</div>'+(rebuttal?'<div class="risk-rebuttal">'+rebuttal+'</div>':'')+commHtml;
+  f.insertBefore(d,f.firstChild);
+  document.querySelectorAll('#mid-tabs .tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('show');});
+  document.querySelectorAll('#mid-tabs .tab')[0].classList.add('active');
+  document.getElementById('tab-coach').classList.add('show');
+}
+
+function detectCounty(text){
+  var lower=text.toLowerCase();
+  var counties=Object.keys(COUNTY_PLANS);for(var i=0;i<counties.length;i++){if(lower.indexOf(counties[i])>-1)return counties[i];}
+  var aliases=Object.keys(COUNTY_ALIASES);for(var j=0;j<aliases.length;j++){if(lower.indexOf(aliases[j])>-1)return COUNTY_ALIASES[aliases[j]];}
+  return null;
+}
+function toTitleCase(s){return s.replace(/\w\S*/g,function(t){return t.charAt(0).toUpperCase()+t.substr(1).toLowerCase();});}
+
+function loadCountyPlans(county,isMedicaid){
+  if(!county||county===currentCounty)return;
+  currentCounty=county;
+  var plans=(COUNTY_PLANS[county]||[]).slice();currentPlans=plans;
+  plans.sort(function(a,b){if(isMedicaid&&a.snp!==b.snp)return a.snp?-1:1;return b.commission-a.commission;});
+  var maxComm=Math.max.apply(null,plans.map(function(p){return p.commission;}));
+  document.getElementById('county-banner').style.display='block';
+  document.getElementById('county-name-txt').textContent=toTitleCase(county)+' County';
+  document.getElementById('county-sub-txt').textContent=plans.length+' plans · '+new Set(plans.map(function(p){return p.carrier;})).size+' carriers';
+  document.getElementById('plan-count-lbl').textContent=plans.length+' plans';
+  var list=document.getElementById('plan-list');list.innerHTML='';
+  plans.forEach(function(p){
+    var isBest=p.commission===maxComm;
+    var ck=p.carrier.split('/')[0].toLowerCase();
+    var tc2={uhc:'tag-uhc',aetna:'tag-aetna',humana:'tag-humana',elevance:'tag-elevance'}[ck]||'tag-uhc';
+    var stars='★'.repeat(Math.floor(p.stars))+(p.stars%1?'½':'');
+    var row=document.createElement('div');row.className='plan-row'+(isBest?' best':'')+(p.snp?' snp-plan':'');
+    row.innerHTML='<div class="plan-top"><span class="plan-carrier-tag '+tc2+'">'+p.carrier+'</span><span class="plan-comm">$'+p.commission+'/yr</span></div>'+
+      '<div class="plan-name-txt">'+p.name+'</div>'+
+      '<div style="display:flex;gap:5px;align-items:center;margin-bottom:3px;">'+(isBest?'<span class="best-badge">★ HIGHEST</span>':'')+(p.snp?'<span class="snp-badge">◆ D-SNP</span>':'')+'<span class="stars">'+stars+'</span></div>'+
+      '<div class="plan-stats"><span class="stat-chip">Premium:<span>$'+p.premium+'</span></span><span class="stat-chip">MOOP:<span>$'+p.moop.toLocaleString()+'</span></span><span class="stat-chip">OTC:<span>$'+p.otc+'/q</span></span><span class="stat-chip">Dental:<span>$'+p.dental.toLocaleString()+'</span></span></div>';
+    list.appendChild(row);
+  });
+  var sorted=plans.slice().sort(function(a,b){return b.commission-a.commission;});
+  var best=sorted[0],worst=sorted[sorted.length-1],delta=best.commission-worst.commission;
+  var panel=document.getElementById('leak-panel'),body=document.getElementById('leak-body'),title=document.getElementById('leak-title');
+  if(delta>80){
+    panel.className='leak-panel active';title.style.color='#e07070';title.textContent='⚠ Revenue Leakage';
+    body.innerHTML='<div class="leak-alert">Best available: <strong>'+best.name+'</strong> earns <strong>$'+delta+' more</strong> than lowest.</div>'+
+      '<div class="leak-delta"><span class="leak-amt good">$'+best.commission+'</span><span class="leak-sub"> best vs </span><span class="leak-amt bad">$'+worst.commission+'</span><span class="leak-sub"> worst</span></div>'+
+      '<div>'+sorted.slice(0,4).map(function(p){return '<div class="leak-row"><span>'+p.carrier+(p.snp?' D-SNP':'')+'</span><span style="font-weight:700;color:'+(p===best?'var(--green)':'var(--text)')+'">$'+p.commission+'</span></div>';}).join('')+'</div>';
+  }else{panel.className='leak-panel safe';title.style.color='var(--green)';title.textContent='✓ Commission Optimized';body.innerHTML='<div style="font-size:10px;color:var(--text2);">All plans in this county have similar commission rates.</div>';}
+}
+
+function updateProfile(p){
+  if(!p)return;
+  ['name','dob','county','zip','plan','medicaid','sep','concerns'].forEach(function(f){
+    if(p[f]&&p[f]!==''&&p[f]!=='unknown'){callerProfile[f]=p[f];var el=document.getElementById('p-'+f);if(el){el.textContent=p[f];el.classList.remove('empty');}}
+  });
+  if(p.name&&!document.getElementById('cname').value)document.getElementById('cname').value=p.name;
+  if(p.county&&p.county!==''){var c=p.county.toLowerCase().replace(' county','').trim();loadCountyPlans(c,!!(p.medicaid&&p.medicaid!==''&&p.medicaid!=='none'&&p.medicaid!=='no'));}
+}
+function updateReadiness(score,status){if(typeof score!=='number')return;readiness=score;document.getElementById('mfill').style.width=score+'%';document.getElementById('mpct').textContent=score+'%';document.getElementById('mst').textContent=status||'';document.getElementById('mfill').style.background=score<30?'var(--red)':score<60?'var(--amber)':score<80?'var(--accent)':'var(--green)';}
+function updateScore(s){if(!s)return;var map={rapport:'r',needs:'n',benefits:'b',objections:'o',compliance:'c'};var tot=0,ct=0;Object.keys(map).forEach(function(k){if(typeof s[k]==='number'){tot+=s[k];ct++;document.getElementById('sc-'+map[k]).textContent=s[k]+'/10';callScore[k]=s[k];}});if(ct>0)document.getElementById('score-big').textContent=Math.round(tot/ct*10);}
+function updateObjections(objs){if(!objs||!objs.length)return;objs.forEach(function(o){objections[o]=(objections[o]||0)+1;});var list=document.getElementById('obj-list');list.innerHTML='';Object.keys(objections).forEach(function(k){var row=document.createElement('div');row.className='obj-row';row.innerHTML='<span class="obj-nm">'+k+'</span><span class="obj-ct">×'+objections[k]+'</span>';list.appendChild(row);});}
+function updateCompliance(c){if(!c)return;var map={soa:'soa',recording:'rec',tpmo:'tpmo',scope:'scope',enrollment:'enroll',pcp:'pcp'};Object.keys(map).forEach(function(k){if(typeof c[k]==='boolean'){var id=map[k];var box=document.getElementById('cb-'+id),txt=document.getElementById('ct-'+id);if(box){box.className='chk-b'+(c[k]?' done':'');box.textContent=c[k]?'✓':'?';}if(txt)txt.className='chk-t'+(c[k]?' done':'');}});}
+
+function schedule(txt){
+  buf+=' '+txt;
+  var newRiskFlags=scanRisks(txt);
+  var county=detectCounty(txt);
+  if(county&&county!==currentCounty)loadCountyPlans(county,callerProfile.medicaid&&callerProfile.medicaid!=='');
+  clearTimeout(coachTmr);
+  coachTmr=setTimeout(function(){var chunk=buf.trim();if(chunk.length<10)return;fullTx+=' '+chunk;buf='';runAnalysis(chunk,newRiskFlags);},3500);
+}
+
+function runAnalysis(chunk,newRiskFlags){
+  if(busy)return;busy=true;showThink();
+  var caller=document.getElementById('cname').value.trim()||'unknown';
+  var ctx=Array.from(contexts).join(', ');
+  var recent=fullTx.slice(-2000);
+  var bestComm=currentPlans.length?Math.max.apply(null,currentPlans.map(function(p){return p.commission;})):540;
+  var riskCtx=newRiskFlags.length?'NEW RISK FLAGS: '+newRiskFlags.map(function(f){return RISK_SIGNALS[f]?RISK_SIGNALS[f].label+'('+RISK_SIGNALS[f].severity+')':f;}).join(', '):'';
+
+  var sys='You are an elite Medicare Advantage sales coach AND retention specialist for Ken Miller at SmartCare Insurance Agency, Maryland. Carriers: UHC/AARP, Aetna, Humana, Elevance.\n\nAnalyze the latest segment. Return ONE JSON object. No markdown.\n\nFOCUS: '+ctx+'\n'+(riskCtx?'PRIORITY — '+riskCtx+'\n':'')+
+    'Best plan commission in current county: $'+bestComm+'/yr\n\n'+
+    'JSON:\n{\n  "cards":[{"type":"rebuttal|tip|compliance|suggest","tag":"","body":""}],\n  "risk_cards":[{"category":"","severity":"CRITICAL|HIGH|MEDIUM","label":"","body":"","rebuttal":"word-for-word save script","commission_stake":0}],\n  "profile":{"name":"","dob":"","county":"","zip":"","plan":"","medicaid":"","sep":"","concerns":""},\n  "readiness":{"score":0,"status":""},\n  "call_score":{"rapport":0,"needs":0,"benefits":0,"objections":0,"compliance":0},\n  "objections_heard":[""],\n  "compliance":{"soa":false,"recording":false,"tpmo":false,"scope":true,"enrollment":false,"pcp":false}\n}\n\n'+
+    'risk_cards: only for new flags '+JSON.stringify(newRiskFlags)+'. rebuttal = word-for-word save script. commission_stake = $'+bestComm+'.\n\n'+
+    'Profile: '+JSON.stringify(callerProfile)+'\nCaller: '+caller+'\nTranscript: '+recent;
+
+  fetch(API_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,system:sys,messages:[{role:'user',content:'Analyze: "'+chunk+'"'}]})})
+  .then(function(r){return r.json();})
+  .then(function(data){
+    if(data.error){rmThink();addCard('compliance','Error',data.error.message||'Check server.');busy=false;return;}
+    var raw=(data.content||[]).map(function(b){return b.text||'';}).join('');
+    var clean=raw.replace(/```json|```/g,'').trim();
+    try{
+      var d=JSON.parse(clean);rmThink();
+      if(d.risk_cards&&d.risk_cards.length)d.risk_cards.slice(0,2).reverse().forEach(function(rc){addRiskCard(rc.severity,rc.label,rc.body,rc.rebuttal,rc.commission_stake);});
+      if(d.cards)d.cards.slice(0,3).reverse().forEach(function(c){addCard(c.type,c.tag,c.body);});
+      if(d.profile)updateProfile(d.profile);
+      if(d.readiness)updateReadiness(d.readiness.score,d.readiness.status);
+      if(d.call_score)updateScore(d.call_score);
+      if(d.objections_heard)updateObjections(d.objections_heard);
+      if(d.compliance)updateCompliance(d.compliance);
+    }catch(e){rmThink();addCard('tip','Active','Transcript recording.');}
+    busy=false;
+  })
+  .catch(function(){rmThink();addCard('compliance','Network Error','Cannot reach server. Check connection.');busy=false;});
+}
+
+function showSummary(){
+  if(!fullTx.trim()){alert('No transcript yet.');return;}
+  document.getElementById('sum-overlay').classList.add('show');
+  document.getElementById('sum-body').innerHTML='<div style="padding:30px;text-align:center;color:var(--text3);">Generating<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>';
+  var caller=document.getElementById('cname').value.trim()||'caller';
+  var riskSummary=Object.keys(detectedRisks).map(function(k){return detectedRisks[k].label+' ('+detectedRisks[k].severity+')';}).join(', ')||'none';
+  var bestPlan=currentPlans.length?currentPlans.slice().sort(function(a,b){return b.commission-a.commission;})[0]:null;
+  var sys='Generate post-call summary for Ken Miller, SmartCare Insurance Agency MD.\nReturn ONLY valid JSON:\n{"call_outcome":"","caller_summary":"","key_points":[],"objections_raised":[],"risk_flags_detected":"","recommended_plans":[],"next_steps":[],"follow_up_script":"","crm_note":""}\ncrm_note: 4-5 sentence Onyx CRM note. Include caller name, county, current plan, risk flags, outcome, best plan with commission, next steps.\nRisk flags: '+riskSummary+'\nCaller: '+caller+'\nCounty: '+(currentCounty||'unknown')+'\nBest plan: '+(bestPlan?bestPlan.name+' ($'+bestPlan.commission+'/yr)':'unknown')+'\nReadiness: '+readiness+'%\nProfile: '+JSON.stringify(callerProfile)+'\nObjections: '+JSON.stringify(objections)+'\nTranscript: '+fullTx.slice(-3000);
+  fetch(API_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:sys,messages:[{role:'user',content:'Summary for: '+caller}]})})
+  .then(function(r){return r.json();})
+  .then(function(data){
+    var raw=(data.content||[]).map(function(b){return b.text||'';}).join('');
+    var clean=raw.replace(/```json|```/g,'').trim();
+    try{
+      var d=JSON.parse(clean);var html='';
+      if(d.call_outcome)html+='<h3>Call Outcome</h3><p>'+d.call_outcome+'</p>';
+      if(d.caller_summary)html+='<h3>Caller Summary</h3><p>'+d.caller_summary+'</p>';
+      if(d.risk_flags_detected)html+='<h3>Risk Flags</h3><p style="color:var(--risk-high);">'+d.risk_flags_detected+'</p>';
+      if(d.key_points&&d.key_points.length){html+='<h3>Key Points</h3>';d.key_points.forEach(function(p){html+='<p>• '+p+'</p>';});}
+      if(d.objections_raised&&d.objections_raised.length){html+='<h3>Objections</h3>';d.objections_raised.forEach(function(o){html+='<p>• '+o+'</p>';});}
+      if(d.recommended_plans&&d.recommended_plans.length){html+='<h3>Recommended Plans</h3>';d.recommended_plans.forEach(function(p){html+='<p>• '+p+'</p>';});}
+      if(d.next_steps&&d.next_steps.length){html+='<h3>Next Steps</h3>';d.next_steps.forEach(function(s,i){html+='<p>'+(i+1)+'. '+s+'</p>';});}
+      if(d.follow_up_script)html+='<h3>Follow-Up Script</h3><p style="background:rgba(26,111,212,0.08);border:1px solid rgba(26,111,212,0.25);border-radius:6px;padding:10px;font-style:italic;color:var(--text);">'+d.follow_up_script+'</p>';
+      if(d.crm_note)html+='<h3>CRM Note — Paste into Onyx</h3><div class="crm-box" id="crm-text">'+d.crm_note+'</div>';
+      document.getElementById('sum-body').innerHTML=html;
+      saveDNARecord();
+    }catch(e){document.getElementById('sum-body').innerHTML='<div class="crm-box">'+raw+'</div>';}
+  })
+  .catch(function(){document.getElementById('sum-body').innerHTML='<p style="color:var(--red);">Failed. Check server.</p>';});
+}
+
+function copyCRM(){var el=document.getElementById('crm-text');if(el){navigator.clipboard.writeText(el.textContent).then(function(){var b=event.target;b.textContent='✓ Copied!';setTimeout(function(){b.textContent='📋 Copy CRM Note';},2000);});}}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+
+function getDNA(){try{return JSON.parse(localStorage.getItem(DNA_KEY))||{totalCalls:0,totalRevenue:0,objectionMap:{},riskMap:{},hourMap:{},scoreHistory:[],avgReadiness:[]};}catch(e){return{totalCalls:0,totalRevenue:0,objectionMap:{},riskMap:{},hourMap:{},scoreHistory:[],avgReadiness:[]};}}
+function saveDNA(d){try{localStorage.setItem(DNA_KEY,JSON.stringify(d));}catch(e){}}
+function saveDNARecord(){
+  var dna=getDNA(),hour=new Date().getHours();
+  var avg=Object.values(callScore).reduce(function(a,b){return a+b;},0);avg=Math.round(avg/5*10);
+  var bestC=currentPlans.length?Math.max.apply(null,currentPlans.map(function(p){return p.commission;})):0;
+  dna.totalCalls=(dna.totalCalls||0)+1;dna.totalRevenue=(dna.totalRevenue||0)+bestC;
+  dna.hourMap=dna.hourMap||{};dna.hourMap[hour]=(dna.hourMap[hour]||0)+1;
+  dna.scoreHistory=dna.scoreHistory||[];dna.scoreHistory.push(avg);if(dna.scoreHistory.length>50)dna.scoreHistory=dna.scoreHistory.slice(-50);
+  dna.avgReadiness=dna.avgReadiness||[];dna.avgReadiness.push(readiness);if(dna.avgReadiness.length>50)dna.avgReadiness=dna.avgReadiness.slice(-50);
+  dna.objectionMap=dna.objectionMap||{};Object.keys(objections).forEach(function(k){dna.objectionMap[k]=(dna.objectionMap[k]||0)+objections[k];});
+  dna.riskMap=dna.riskMap||{};Object.keys(detectedRisks).forEach(function(k){dna.riskMap[k]=(dna.riskMap[k]||0)+1;});
+  saveDNA(dna);
+}
+function showDNA(){
+  var dna=getDNA();
+  document.getElementById('dna-overlay').classList.add('show');
+  var avgS=dna.scoreHistory&&dna.scoreHistory.length?Math.round(dna.scoreHistory.reduce(function(a,b){return a+b;},0)/dna.scoreHistory.length):0;
+  var avgR=dna.avgReadiness&&dna.avgReadiness.length?Math.round(dna.avgReadiness.reduce(function(a,b){return a+b;},0)/dna.avgReadiness.length):0;
+  var topH='—',topHCt=0;if(dna.hourMap)Object.keys(dna.hourMap).forEach(function(h){if(dna.hourMap[h]>topHCt){topHCt=dna.hourMap[h];topH=h;}});
+  var topHF=topH!=='—'?(parseInt(topH)>=12?(parseInt(topH)===12?12:parseInt(topH)-12)+'pm':(parseInt(topH)||12)+'am'):'—';
+  var topO=Object.keys(dna.objectionMap||{}).sort(function(a,b){return dna.objectionMap[b]-dna.objectionMap[a];}).slice(0,5);
+  var topR=Object.keys(dna.riskMap||{}).sort(function(a,b){return dna.riskMap[b]-dna.riskMap[a];}).slice(0,4);
+  var maxO=topO.length?dna.objectionMap[topO[0]]:1;
+  var sbHtml='';
+  if(dna.scoreHistory&&dna.scoreHistory.length>1){sbHtml='<h3 style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin:10px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--border);">Call Score Trend</h3><div style="display:flex;gap:2px;align-items:flex-end;height:36px;">';dna.scoreHistory.slice(-20).forEach(function(s){var h=Math.round(s/100*36);var c=s<40?'var(--red)':s<70?'var(--amber)':'var(--green)';sbHtml+='<div style="flex:1;height:'+h+'px;background:'+c+';border-radius:2px;"></div>';});sbHtml+='</div>';}
+  var rHtml='';if(topR.length){rHtml='<h3 style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin:10px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--border);">Top Risk Flags</h3>';var maxR=dna.riskMap[topR[0]];topR.forEach(function(k){var sig=RISK_SIGNALS[k];var lbl=sig?sig.label:k;var p=Math.round(dna.riskMap[k]/maxR*100);rHtml+='<div class="obj-b-row"><span class="obj-b-lbl">'+lbl+'</span><div class="obj-b-bar"><div class="obj-b-fill" style="width:'+p+'%;background:var(--risk-high);"></div></div><span class="obj-b-ct">'+dna.riskMap[k]+'</span></div>';});}
+  var oHtml='';if(topO.length){oHtml='<h3 style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin:10px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--border);">Top Objections</h3>';topO.forEach(function(o){var p=Math.round(dna.objectionMap[o]/maxO*100);oHtml+='<div class="obj-b-row"><span class="obj-b-lbl">'+o+'</span><div class="obj-b-bar"><div class="obj-b-fill" style="width:'+p+'%"></div></div><span class="obj-b-ct">'+dna.objectionMap[o]+'</span></div>';});}
+  var hHtml='<h3 style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);margin:10px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--border);">Call Volume by Hour</h3><div class="hour-grid">';
+  for(var h=7;h<=19;h++){var ct=dna.hourMap&&dna.hourMap[h]?dna.hourMap[h]:0;var mx=dna.hourMap?Math.max.apply(null,Object.values(dna.hourMap).concat([1])):1;var pp=Math.round(ct/mx*100);var ap=h>11?(h===12?12:h-12)+'p':(h||12)+'a';hHtml+='<div><div class="hour-cell"><div class="hour-fill" style="height:'+pp+'%"></div></div><div class="hour-lbl">'+ap+'</div></div>';}
+  hHtml+='</div>';
+  document.getElementById('dna-body').innerHTML='<div class="dna-grid"><div class="dna-card"><div class="dna-num">'+dna.totalCalls+'</div><div class="dna-lbl">Total Calls</div></div><div class="dna-card"><div class="dna-num">$'+(dna.totalRevenue||0).toLocaleString()+'</div><div class="dna-lbl">Commission Potential</div></div><div class="dna-card"><div class="dna-num">'+avgS+'</div><div class="dna-lbl">Avg Call Score /100</div></div><div class="dna-card"><div class="dna-num">'+avgR+'%</div><div class="dna-lbl">Avg Readiness</div></div><div class="dna-card"><div class="dna-num">'+topHF+'</div><div class="dna-lbl">Peak Hour</div><div class="dna-sub">'+topHCt+' calls</div></div><div class="dna-card"><div class="dna-num">'+Object.keys(dna.riskMap||{}).length+'</div><div class="dna-lbl">Risk Types Seen</div></div></div>'+sbHtml+rHtml+oHtml+hHtml;
+}
+function clearDNA(){if(confirm('Reset all DNA data?')){localStorage.removeItem(DNA_KEY);closeModal('dna-overlay');setTimeout(showDNA,100);}}
+
+function startCall(){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){setMsg('Use Google Chrome on desktop.');return;}
+  rec=new SR();rec.continuous=true;rec.interimResults=true;rec.lang='en-US';
+  rec.onstart=function(){going=true;document.getElementById('sbtn').disabled=true;document.getElementById('xbtn').disabled=false;document.getElementById('sumbtn').disabled=false;document.getElementById('tbox').innerHTML='';setMsg('LIVE — Risk engine + County Intel + AI Coach all active.');setLive(true);clockTmr=setInterval(tick,1000);};
+  rec.onresult=function(e){var fin='',itr='';for(var i=e.resultIndex;i<e.results.length;i++){var t=e.results[i][0].transcript;e.results[i].isFinal?fin+=t:itr+=t;}if(fin){appendTx(fin,false);schedule(fin);}else if(itr)appendTx(itr,true);};
+  rec.onerror=function(e){if(e.error==='not-allowed'){setMsg('Mic blocked. Click 🔒 in Chrome address bar → allow mic → refresh.');endCall();}};
+  rec.onend=function(){if(going){try{rec.start();}catch(ex){}}};
+  try{rec.start();}catch(e){setMsg('Mic error: '+e.message);}
+}
+function endCall(){going=false;if(rec){rec.onend=null;try{rec.stop();}catch(e){}}clearTimeout(coachTmr);clearInterval(clockTmr);document.getElementById('sbtn').disabled=false;document.getElementById('xbtn').disabled=true;setLive(false);setMsg('Call ended ('+Math.floor(secs/60)+'m '+secs%60+'s). Click 📋 Summary for full report.');}
+function resetAll(){
+  endCall();fullTx='';buf='';secs=0;busy=false;currentCounty='';currentPlans=[];readiness=0;objections={};detectedRisks={};totalRiskScore=0;callScore={rapport:0,needs:0,benefits:0,objections:0,compliance:0};callerProfile={name:'',dob:'',county:'',zip:'',plan:'',medicaid:'',sep:'',concerns:''};
+  document.getElementById('tmr').textContent='00:00';document.getElementById('cname').value='';
+  document.getElementById('tbox').innerHTML='<span class="itr">Transcript appears here once listening starts...</span>';
+  document.getElementById('feed').innerHTML='<div class="empty-st" id="empty-coach"><div style="font-size:24px;">🎯</div><div style="font-weight:600;color:var(--text2);">Coaching cards appear here</div><div style="font-size:10px;margin-top:2px;">Start listening to activate</div></div>';
+  document.getElementById('plan-list').innerHTML='<div style="font-size:10px;color:var(--text3);padding:10px;text-align:center;">County detected from transcript populates plans here.</div>';
+  document.getElementById('county-banner').style.display='none';document.getElementById('plan-count-lbl').textContent='—';
+  document.getElementById('leak-panel').className='leak-panel';document.getElementById('leak-title').textContent='Revenue Leakage Monitor';document.getElementById('leak-title').style.color='var(--text3)';document.getElementById('leak-body').innerHTML='<div style="font-size:10px;color:var(--text3);">Activates when county is detected on call.</div>';
+  document.getElementById('risk-bar').classList.add('hidden');document.getElementById('risk-flags').innerHTML='';
+  document.getElementById('risk-detail-feed').innerHTML='<div style="font-size:10px;color:var(--text3);text-align:center;padding:16px;">No risk signals detected yet.</div>';
+  document.getElementById('risk-summary-flags').innerHTML='';
+  ['name','dob','county','zip','plan','medicaid','sep','concerns'].forEach(function(f){var el=document.getElementById('p-'+f);if(el){el.textContent='—';el.classList.add('empty');}});
+  document.getElementById('mfill').style.width='0%';document.getElementById('mpct').textContent='0%';document.getElementById('mst').textContent='Waiting...';document.getElementById('score-big').textContent='—';
+  ['r','n','b','o','c'].forEach(function(k){var el=document.getElementById('sc-'+k);if(el)el.textContent='—';});
+  document.getElementById('obj-list').innerHTML='<div style="font-size:10px;color:var(--text3);font-style:italic;">None yet</div>';
+  ['soa','rec','tpmo','scope','enroll','pcp'].forEach(function(id){var b=document.getElementById('cb-'+id),t=document.getElementById('ct-'+id);if(b){b.className='chk-b';b.textContent='?';}if(t)t.className='chk-t';});
+  document.getElementById('sumbtn').disabled=true;
+  setMsg('Click "Start Listening" and allow microphone access when Chrome asks');
+}
+</script>
+</body>
+</html>
